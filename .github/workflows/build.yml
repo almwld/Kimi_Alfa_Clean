@@ -35,13 +35,9 @@ jobs:
 
           mkdir -p assets/images assets/icons/svg assets/animations assets/fonts
 
-          # تعديل pubspec.yaml: خفض path_provider وإزالة fonts
-          echo "🔧 تعديل pubspec.yaml"
-          sed -i 's/^\([[:space:]]*\)path_provider: .*/\1path_provider: ^2.0.0/g' pubspec.yaml
+          # تعديل pubspec.yaml: خفض إصدار path_provider وإزالة fonts
+          sed -i 's/path_provider:.*/path_provider: ^2.0.0/' pubspec.yaml
           sed -i '/fonts:/,/family: Changa/d' pubspec.yaml
-
-          echo "✅ pubspec.yaml بعد التعديل:"
-          cat pubspec.yaml | grep -E "path_provider|fonts" || echo "لا يوجد path_provider/fonts"
 
           sed -i '/<application>/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' android/app/src/main/AndroidManifest.xml
 
