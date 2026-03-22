@@ -13,7 +13,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0'
+          flutter-version: '3.22.0'
 
       - name: Build
         run: |
@@ -35,10 +35,10 @@ jobs:
 
           mkdir -p assets/images assets/icons/svg assets/animations assets/fonts
 
-          # تعديل pubspec.yaml: خفض إصدار path_provider وإزالة fonts
-          sed -i 's/path_provider:.*/path_provider: ^2.0.0/' pubspec.yaml
+          # إزالة أي قسم fonts قد يسبب مشكلة
           sed -i '/fonts:/,/family: Changa/d' pubspec.yaml
 
+          # إضافة flutterEmbedding
           sed -i '/<application>/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' android/app/src/main/AndroidManifest.xml
 
           flutter pub get
