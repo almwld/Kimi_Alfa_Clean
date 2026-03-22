@@ -17,25 +17,30 @@ jobs:
 
       - name: Build
         run: |
-          # حفظ lib و assets و env فقط
+          # حفظ lib و assets فقط (بدون .env)
           mkdir /tmp/code
           cp -r lib /tmp/code/
           cp -r assets /tmp/code/ 2>/dev/null || true
-          cp .env /tmp/code/ 2>/dev/null || true
 
-          # حذف أي مجلد android قديم
+          # حذف android/ios القديم
           rm -rf android ios
 
-          # إنشاء مشروع Flutter جديد (ينشئ android/ios بإعدادات حديثة)
+          # إنشاء مشروع Flutter جديد
           flutter create --org com.kimialfa --project-name kimi_alfa .
 
-          # استعادة lib و assets و env (بدون pubspec.yaml)
+          # استعادة lib و assets
           rm -rf lib assets
           cp -r /tmp/code/lib .
           cp -r /tmp/code/assets . 2>/dev/null || true
-          cp /tmp/code/.env . 2>/dev/null || true
 
-          # إنشاء pubspec.yaml جديد تماماً (متوافق مع Flutter 3.22.0)
+          # إنشاء .env من GitHub Secrets
+          cat > .env << 'ENV'
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          MAP_API_KEY=${{ secrets.MAP_API_KEY }}
+          ENV
+
+          # إنشاء pubspec.yaml جديد (بدون .env في assets لتجنب خطأ الملف المفقود)
           cat > pubspec.yaml << 'YAML'
           name: kimi_alfa
           description: Kimi Alfa
@@ -93,7 +98,7 @@ jobs:
           # إضافة flutterEmbedding
           sed -i '/<application>/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' android/app/src/main/AndroidManifest.xml
 
-          # تحديث Gradle إلى 8.3 و Kotlin إلى 1.9.22
+          # تحديث Kotlin و Gradle
           cat > android/build.gradle << 'GRADLE'
           buildscript {
               ext.kotlin_version = '1.9.22'
@@ -124,10 +129,9 @@ jobs:
           }
           GRADLE
 
-          # تحديث gradle-wrapper إلى 8.3
           echo "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.3-all.zip" > android/gradle/wrapper/gradle-wrapper.properties
 
-          # حذف cache Gradle بالكامل (للتخلص من Kotlin 1.9.0)
+          # حذف cache Gradle
           rm -rf ~/.gradle/caches/
 
           # بناء
