@@ -17,30 +17,30 @@ jobs:
 
       - name: Build
         run: |
+          # حفظ الكود
           mkdir /tmp/code
           cp -r lib /tmp/code/
           cp pubspec.yaml /tmp/code/
           cp -r assets /tmp/code/ 2>/dev/null || true
           cp .env /tmp/code/ 2>/dev/null || true
 
+          # حذف android/ios القديم
           rm -rf android ios
 
+          # إنشاء مشروع Flutter جديد
           flutter create --org com.kimialfa --project-name kimi_alfa .
 
+          # استعادة الكود (مع الاحتفاظ بملفات android الجديدة)
           rm -rf lib assets
           cp -r /tmp/code/lib .
           cp -r /tmp/code/assets . 2>/dev/null || true
           cp /tmp/code/pubspec.yaml .
           cp /tmp/code/.env . 2>/dev/null || true
 
-          mkdir -p assets/images assets/icons/svg assets/animations assets/fonts
-
-          # إزالة أي قسم fonts قد يسبب مشكلة
-          sed -i '/fonts:/,/family: Changa/d' pubspec.yaml
-
           # إضافة flutterEmbedding
           sed -i '/<application>/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' android/app/src/main/AndroidManifest.xml
 
+          # بناء
           flutter pub get
           flutter build apk --release --split-per-abi
 
