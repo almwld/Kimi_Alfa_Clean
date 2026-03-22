@@ -1,0 +1,51 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+
+      - name: Build
+        run: |
+          # 1. حفظ الكود الخاص بك فقط (lib, assets, pubspec.yaml, .env)
+          mkdir /tmp/code
+          cp -r lib /tmp/code/
+          cp pubspec.yaml /tmp/code/
+          cp -r assets /tmp/code/ 2>/dev/null || true
+          cp .env /tmp/code/ 2>/dev/null || true
+
+          # 2. حذف مجلد android/ios القديم (إن وجد)
+          rm -rf android ios
+
+          # 3. أنشئ مشروع Flutter جديد (سيولد android/ios بإعدادات نظيفة)
+          flutter create --org com.kimialfa --project-name kimi_alfa .
+
+          # 4. استعد الكود الخاص بك (لا نستبدل android/ios)
+          rm -rf lib assets
+          cp -r /tmp/code/lib .
+          cp -r /tmp/code/assets . 2>/dev/null || true
+          cp /tmp/code/pubspec.yaml .
+          cp /tmp/code/.env . 2>/dev/null || true
+
+          # 5. أنشئ مجلدات assets الأساسية لتجنب أي خطأ "asset not found"
+          mkdir -p assets/images assets/icons/svg assets/animations assets/fonts
+
+          # 6. اترك كل شيء لـ Flutter
+          flutter pub get
+          flutter build apk --release --split-per-abi
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: build/app/outputs/flutter-apk/*.apk
