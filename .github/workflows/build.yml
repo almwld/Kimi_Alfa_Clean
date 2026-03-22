@@ -19,7 +19,6 @@ jobs:
         run: |
           mkdir /tmp/code
           cp -r lib /tmp/code/
-          cp pubspec.yaml /tmp/code/
           cp -r assets /tmp/code/ 2>/dev/null || true
           cp .env /tmp/code/ 2>/dev/null || true
 
@@ -30,14 +29,61 @@ jobs:
           rm -rf lib assets
           cp -r /tmp/code/lib .
           cp -r /tmp/code/assets . 2>/dev/null || true
-          cp /tmp/code/pubspec.yaml .
           cp /tmp/code/.env . 2>/dev/null || true
 
-          mkdir -p assets/images assets/icons/svg assets/animations assets/fonts
+          cat > pubspec.yaml << 'YAML'
+          name: kimi_alfa
+          description: Kimi Alfa
+          publish_to: 'none'
+          version: 1.0.0+1
 
-          # تعديل pubspec.yaml: خفض path_provider إلى 2.0.0 وإزالة fonts
-          sed -i 's/path_provider:.*/path_provider: ^2.0.0/' pubspec.yaml
-          sed -i '/fonts:/,/family: Changa/d' pubspec.yaml
+          environment:
+            sdk: '>=3.0.0 <4.0.0'
+
+          dependencies:
+            flutter:
+              sdk: flutter
+            cupertino_icons: ^1.0.6
+            provider: ^6.1.1
+            supabase_flutter: ^2.0.0
+            carousel_slider: ^5.0.0
+            flutter_animate: ^4.0.0
+            flutter_svg: ^2.0.0
+            image_picker: ^1.0.0
+            cached_network_image: ^3.3.0
+            shared_preferences: ^2.2.0
+            intl: ^0.18.0
+            url_launcher: ^6.2.0
+            hive: ^2.2.0
+            hive_flutter: ^1.1.0
+            path_provider: ^2.0.0
+            geolocator: ^11.0.0
+            geocoding: ^3.0.0
+            flutter_map: ^6.0.0
+            latlong2: ^0.9.0
+            flutter_local_notifications: ^17.0.0
+            firebase_core: ^3.0.0
+            firebase_messaging: ^15.0.0
+            flutter_dotenv: ^5.0.0
+            shimmer: ^3.0.0
+            smooth_page_indicator: ^1.1.0
+            flutter_screenutil: ^5.9.0
+            google_fonts: ^6.0.0
+
+          dev_dependencies:
+            flutter_test:
+              sdk: flutter
+            flutter_lints: ^3.0.0
+
+          flutter:
+            uses-material-design: true
+            assets:
+              - .env
+              - assets/images/
+              - assets/icons/svg/
+              - assets/animations/
+              - assets/fonts/
+          YAML
 
           sed -i '/<application>/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' android/app/src/main/AndroidManifest.xml
 
