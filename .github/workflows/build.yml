@@ -31,6 +31,8 @@ jobs:
           cp -r /tmp/code/assets . 2>/dev/null || true
           cp /tmp/code/.env . 2>/dev/null || true
 
+          # حذف أي pubspec.yaml مستعاد ثم إنشاء ملف جديد
+          rm -f pubspec.yaml
           cat > pubspec.yaml << 'YAML'
           name: kimi_alfa
           description: Kimi Alfa
@@ -84,6 +86,9 @@ jobs:
               - assets/animations/
               - assets/fonts/
           YAML
+
+          echo "=== pubspec.yaml بعد الإنشاء ==="
+          grep "path_provider" pubspec.yaml
 
           sed -i '/<application>/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' android/app/src/main/AndroidManifest.xml
 
