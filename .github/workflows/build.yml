@@ -1,4 +1,4 @@
-name: Kimi_Alfa Build & Release
+name: Build APK
 
 on:
   push:
@@ -19,14 +19,15 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
+          flutter-version: '3.19.0'
 
       - name: Build
         run: |
-          # حفظ الكود (lib, assets)
+          # حفظ الكود (lib, assets, .env)
           mkdir /tmp/code
           cp -r lib /tmp/code/
           cp -r assets /tmp/code/ 2>/dev/null || true
+          cp .env /tmp/code/ 2>/dev/null || true
 
           # حذف أي مجلد android قديم
           rm -rf android ios
@@ -38,33 +39,32 @@ jobs:
           rm -rf lib assets
           cp -r /tmp/code/lib .
           cp -r /tmp/code/assets . 2>/dev/null || true
+          cp /tmp/code/.env . 2>/dev/null || true
 
-          # إنشاء .env من GitHub Secrets
+          # تعديل pubspec.yaml: خفض path_provider إلى ^2.0.0 وإزالة fonts (لتفادي أخطاء الأصول)
+          sed -i 's/path_provider: .*/path_provider: ^2.0.0/' pubspec.yaml
+          sed -i '/fonts:/,/family: Changa/d' pubspec.yaml
+
+          # إنشاء .env من GitHub Secrets (إذا لم يكن موجوداً)
           cat > .env << 'ENV'
           SUPABASE_URL=${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
           MAP_API_KEY=${{ secrets.MAP_API_KEY }}
           ENV
 
-          # إزالة قسم fonts من pubspec.yaml (لتجنب أخطاء الأصول)
-          sed -i '/fonts:/,/family: Changa/d' pubspec.yaml
-
           # إضافة flutterEmbedding v2
           sed -i '/<application>/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' android/app/src/main/AndroidManifest.xml
 
-          # تحديث Gradle wrapper إلى 8.9
-          echo "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.9-all.zip" > android/gradle/wrapper/gradle-wrapper.properties
-
-          # فرض Kotlin 1.9.22 و AGP 8.3.0
+          # فرض Kotlin 1.7.1 و Gradle 7.6.3 (متوافقان مع Flutter 3.19.0)
           cat > android/build.gradle << 'GRADLE'
           buildscript {
-              ext.kotlin_version = '1.9.22'
+              ext.kotlin_version = '1.7.1'
               repositories {
                   google()
                   mavenCentral()
               }
               dependencies {
-                  classpath 'com.android.tools.build:gradle:8.3.0'
+                  classpath 'com.android.tools.build:gradle:7.6.3'
                   classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
               }
           }
@@ -86,76 +86,7 @@ jobs:
           }
           GRADLE
 
-          # تحديث app/build.gradle لاستخدام نفس Kotlin
-          cat > android/app/build.gradle << 'APP'
-          plugins {
-              id "com.android.application"
-              id "kotlin-android"
-              id "dev.flutter.flutter-gradle-plugin"
-          }
-
-          def localProperties = new Properties()
-          def localPropertiesFile = rootProject.file('local.properties')
-          if (localPropertiesFile.exists()) {
-              localPropertiesFile.withReader('UTF-8') { reader ->
-                  localProperties.load(reader)
-              }
-          }
-
-          def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
-          if (flutterVersionCode == null) {
-              flutterVersionCode = '1'
-          }
-
-          def flutterVersionName = localProperties.getProperty('flutter.versionName')
-          if (flutterVersionName == null) {
-              flutterVersionName = '1.0'
-          }
-
-          android {
-              namespace "com.kimialfa.kimi_alfa"
-              compileSdk 34
-              ndkVersion flutter.ndkVersion
-
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_1_8
-                  targetCompatibility JavaVersion.VERSION_1_8
-                  coreLibraryDesugaringEnabled true
-              }
-
-              kotlinOptions {
-                  jvmTarget = '1.8'
-              }
-
-              sourceSets {
-                  main.java.srcDirs += 'src/main/kotlin'
-              }
-
-              defaultConfig {
-                  applicationId "com.kimialfa.kimi_alfa"
-                  minSdk 21
-                  targetSdk 34
-                  versionCode flutterVersionCode.toInteger()
-                  versionName flutterVersionName
-                  multiDexEnabled true
-              }
-
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.debug
-                  }
-              }
-          }
-
-          flutter {
-              source '../..'
-          }
-
-          dependencies {
-              implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-              coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
-          }
-          APP
+          echo "distributionUrl=https\\://services.gradle.org/distributions/gradle-7.6.3-all.zip" > android/gradle/wrapper/gradle-wrapper.properties
 
           # تنظيف cache Gradle بالكامل
           rm -rf ~/.gradle/caches/
