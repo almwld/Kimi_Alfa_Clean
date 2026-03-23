@@ -23,37 +23,129 @@ jobs:
 
       - name: Patch code to fix build errors
         run: |
-          # إضافة الخصائص المفقودة في AppTheme
-          cat >> lib/theme/app_theme.dart << 'PATCH'
-          
-          static const Color darkSurface = Color(0xFF1E1E1E);
-          static const Color lightSurface = Colors.white;
-          static const Color darkDivider = Color(0xFF3C3C3C);
-          static const Color lightDivider = Color(0xFFE0E0E0);
-          static const Color darkTextLight = Color(0xFFE0E0E0);
-          static const LinearGradient goldGradient = LinearGradient(
-            colors: [goldColor, goldLight],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          );
-          static Color getDividerColor(BuildContext context) {
-            return Theme.of(context).brightness == Brightness.dark ? darkDivider : lightDivider;
+          # 1. إصلاح app_theme.dart: إضافة جميع الثوابت المفقودة
+          cat > lib/theme/app_theme.dart << 'EOF'
+          import 'package:flutter/material.dart';
+
+          class AppTheme {
+            static const Color goldColor = Color(0xFFD4AF37);
+            static const Color goldLight = Color(0xFFF4E4C1);
+            static const Color goldDark = Color(0xFFB8860B);
+            static const Color lightBackground = Color(0xFFF5F5F5);
+            static const Color darkBackground = Color(0xFF121212);
+            static const Color lightCard = Colors.white;
+            static const Color darkCard = Color(0xFF1E1E1E);
+            static const Color lightSurface = Colors.white;
+            static const Color darkSurface = Color(0xFF1E1E1E);
+            static const Color lightText = Color(0xFF212121);
+            static const Color darkText = Color(0xFFE0E0E0);
+            static const Color lightTextSecondary = Color(0xFF757575);
+            static const Color darkTextSecondary = Color(0xFFB0B0B0);
+            static const Color darkTextLight = Color(0xFFE0E0E0);
+            static const Color success = Color(0xFF4CAF50);
+            static const Color error = Color(0xFFE53935);
+            static const Color warning = Color(0xFFFFA726);
+            static const Color info = Color(0xFF29B6F6);
+            static const Color darkDivider = Color(0xFF3C3C3C);
+            static const Color lightDivider = Color(0xFFE0E0E0);
+
+            static const LinearGradient goldGradient = LinearGradient(
+              colors: [goldColor, goldLight],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            );
+
+            static ThemeData get lightTheme { ... } // احتفظ بالثيم السابق أو استخدم النسخة المبسطة أدناه
+            static ThemeData get darkTheme { ... }
+
+            static Color getTextColor(BuildContext context) =>
+                Theme.of(context).brightness == Brightness.dark ? darkText : lightText;
+            static Color getSecondaryTextColor(BuildContext context) =>
+                Theme.of(context).brightness == Brightness.dark ? darkTextSecondary : lightTextSecondary;
+            static Color getBackgroundColor(BuildContext context) =>
+                Theme.of(context).brightness == Brightness.dark ? darkBackground : lightBackground;
+            static Color getCardColor(BuildContext context) =>
+                Theme.of(context).brightness == Brightness.dark ? darkCard : lightCard;
+            static Color getDividerColor(BuildContext context) =>
+                Theme.of(context).brightness == Brightness.dark ? darkDivider : lightDivider;
           }
-          PATCH
+          EOF
 
-          # إضافة خاصية isAuthenticated في SupabaseService
-          cat >> lib/services/supabase_service.dart << 'PATCH'
-          static bool get isAuthenticated => currentUser != null;
-          PATCH
+          # 2. إصلاح supabase_service.dart
+          cat > lib/services/supabase_service.dart << 'EOF'
+          import 'dart:typed_data';
+          import 'package:supabase_flutter/supabase_flutter.dart';
 
-          # إصلاح دالة signUpWithEmail في register_screen.dart
+          class SupabaseService {
+            static final SupabaseClient _client = Supabase.instance.client;
+            static User? get currentUser => _client.auth.currentUser;
+            static String? get currentUserId => currentUser?.id;
+            static bool get isAuthenticated => currentUser != null;
+
+            static Future<AuthResponse> signInWithEmail(String email, String password) async {
+              return await _client.auth.signInWithPassword(email: email, password: password);
+            }
+            static Future<AuthResponse> signUpWithEmail(String email, String password, {Map<String, dynamic>? data}) async {
+              return await _client.auth.signUp(email: email, password: password, data: data);
+            }
+            static Future<void> signOut() async => await _client.auth.signOut();
+            static Future<void> resetPassword(String email) async => await _client.auth.resetPasswordForEmail(email);
+
+            static Future<bool> addRating({required String productId, required double rating, String? comment, List<String>? images}) async {
+              try {
+                final userId = currentUserId;
+                if (userId == null) return false;
+                await _client.from('ratings').insert({
+                  'product_id': productId,
+                  'user_id': userId,
+                  'rating': rating,
+                  'comment': comment,
+                  'images': images,
+                  'created_at': DateTime.now().toIso8601String(),
+                });
+                return true;
+              } catch (e) { print('Error adding rating: $e'); return false; }
+            }
+
+            static Future<List<Map<String, dynamic>>> getRatings(String productId) async {
+              try {
+                final response = await _client.from('ratings').select('*').eq('product_id', productId).order('created_at', ascending: false);
+                return List<Map<String, dynamic>>.from(response);
+              } catch (e) { print('Error getting ratings: $e'); return []; }
+            }
+
+            static Future<List<Map<String, dynamic>>> getProducts({String? category, int limit = 20}) async {
+              try {
+                var query = _client.from('products').select('*').limit(limit);
+                if (category != null) query = query.eq('category', category);
+                final response = await query.order('created_at', ascending: false);
+                return List<Map<String, dynamic>>.from(response);
+              } catch (e) { print('Error getting products: $e'); return []; }
+            }
+
+            static Future<bool> addProduct(Map<String, dynamic> product) async {
+              try { await _client.from('products').insert(product); return true; }
+              catch (e) { print('Error adding product: $e'); return false; }
+            }
+
+            static Future<String?> uploadImage(String path, Uint8List fileBytes) async {
+              try {
+                final fileName = '${DateTime.now().millisecondsSinceEpoch}_$path';
+                await _client.storage.from('images').uploadBinary(fileName, fileBytes, fileOptions: const FileOptions(contentType: 'image/jpeg'));
+                return _client.storage.from('images').getPublicUrl(fileName);
+              } catch (e) { print('Error uploading image: $e'); return null; }
+            }
+          }
+          EOF
+
+          # 3. إصلاح register_screen.dart: استدعاء signUpWithEmail بشكل صحيح
           sed -i 's/await SupabaseService.signUpWithEmail();/await SupabaseService.signUpWithEmail(email, password, data: {});/' lib/screens/register_screen.dart
 
-          # إضافة معامل showLogo إلى CustomAppBar
-          cat > lib/widgets/custom_app_bar_patch.dart << 'PATCH'
+          # 4. إصلاح custom_app_bar.dart: إضافة showLogo
+          cat > lib/widgets/custom_app_bar.dart << 'EOF'
           import 'package:flutter/material.dart';
           import '../theme/app_theme.dart';
-          
+
           class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             final String? title;
             final List<Widget>? actions;
@@ -61,7 +153,7 @@ jobs:
             final bool centerTitle;
             final double elevation;
             final bool showLogo;
-          
+
             const CustomAppBar({
               super.key,
               this.title,
@@ -71,7 +163,7 @@ jobs:
               this.elevation = 0,
               this.showLogo = false,
             });
-          
+
             @override
             Widget build(BuildContext context) {
               final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -87,25 +179,14 @@ jobs:
                 actions: actions,
               );
             }
-          
+
             @override
             Size get preferredSize => const Size.fromHeight(kToolbarHeight);
           }
-          PATCH
-          cp lib/widgets/custom_app_bar_patch.dart lib/widgets/custom_app_bar.dart
+          EOF
 
-          # إصلاح مشكلة width في empty_state.dart (إزالة المعامل غير المعروف)
-          sed -i 's/width: 200,//' lib/widgets/empty_state.dart
-
-          # إصلاح مشكلة eq في supabase_service.dart
-          sed -i 's/query\.eq/query\.filter/g' lib/services/supabase_service.dart
-
-          # إصلاح uploadImage: تحويل List<int> إلى Uint8List
-          sed -i 's/List<int> fileBytes/Uint8List fileBytes/' lib/services/supabase_service.dart
-          sed -i 's/import .dart:typed_data.;/import 'dart:typed_data';/' lib/services/supabase_service.dart
-
-          # إزالة استخدام width في empty_state.dart (تأكيد)
-          sed -i '/width: 200,/d' lib/widgets/empty_state.dart
+          # 5. إصلاح empty_state.dart: إزالة width غير المعروفة
+          sed -i 's/width: 200,//g' lib/widgets/empty_state.dart
 
       - name: Build APK
         run: |
