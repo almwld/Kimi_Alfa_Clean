@@ -21,9 +21,95 @@ jobs:
         with:
           flutter-version: '3.22.0'
 
+      - name: Patch code to fix build errors
+        run: |
+          # إضافة الخصائص المفقودة في AppTheme
+          cat >> lib/theme/app_theme.dart << 'PATCH'
+          
+          static const Color darkSurface = Color(0xFF1E1E1E);
+          static const Color lightSurface = Colors.white;
+          static const Color darkDivider = Color(0xFF3C3C3C);
+          static const Color lightDivider = Color(0xFFE0E0E0);
+          static const Color darkTextLight = Color(0xFFE0E0E0);
+          static const LinearGradient goldGradient = LinearGradient(
+            colors: [goldColor, goldLight],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          );
+          static Color getDividerColor(BuildContext context) {
+            return Theme.of(context).brightness == Brightness.dark ? darkDivider : lightDivider;
+          }
+          PATCH
+
+          # إضافة خاصية isAuthenticated في SupabaseService
+          cat >> lib/services/supabase_service.dart << 'PATCH'
+          static bool get isAuthenticated => currentUser != null;
+          PATCH
+
+          # إصلاح دالة signUpWithEmail في register_screen.dart
+          sed -i 's/await SupabaseService.signUpWithEmail();/await SupabaseService.signUpWithEmail(email, password, data: {});/' lib/screens/register_screen.dart
+
+          # إضافة معامل showLogo إلى CustomAppBar
+          cat > lib/widgets/custom_app_bar_patch.dart << 'PATCH'
+          import 'package:flutter/material.dart';
+          import '../theme/app_theme.dart';
+          
+          class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
+            final String? title;
+            final List<Widget>? actions;
+            final Widget? leading;
+            final bool centerTitle;
+            final double elevation;
+            final bool showLogo;
+          
+            const CustomAppBar({
+              super.key,
+              this.title,
+              this.actions,
+              this.leading,
+              this.centerTitle = true,
+              this.elevation = 0,
+              this.showLogo = false,
+            });
+          
+            @override
+            Widget build(BuildContext context) {
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              return AppBar(
+                title: showLogo
+                    ? Image.asset('assets/logo.png', height: 40)
+                    : (title != null ? Text(title!, style: const TextStyle(fontFamily: 'Changa', fontWeight: FontWeight.bold)) : null),
+                centerTitle: centerTitle,
+                backgroundColor: isDark ? AppTheme.darkCard : AppTheme.goldColor,
+                foregroundColor: isDark ? AppTheme.goldColor : Colors.black,
+                elevation: elevation,
+                leading: leading,
+                actions: actions,
+              );
+            }
+          
+            @override
+            Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+          }
+          PATCH
+          cp lib/widgets/custom_app_bar_patch.dart lib/widgets/custom_app_bar.dart
+
+          # إصلاح مشكلة width في empty_state.dart (إزالة المعامل غير المعروف)
+          sed -i 's/width: 200,//' lib/widgets/empty_state.dart
+
+          # إصلاح مشكلة eq في supabase_service.dart
+          sed -i 's/query\.eq/query\.filter/g' lib/services/supabase_service.dart
+
+          # إصلاح uploadImage: تحويل List<int> إلى Uint8List
+          sed -i 's/List<int> fileBytes/Uint8List fileBytes/' lib/services/supabase_service.dart
+          sed -i 's/import .dart:typed_data.;/import 'dart:typed_data';/' lib/services/supabase_service.dart
+
+          # إزالة استخدام width في empty_state.dart (تأكيد)
+          sed -i '/width: 200,/d' lib/widgets/empty_state.dart
+
       - name: Build APK
         run: |
-          # حفظ الكود (lib و assets)
+          # حفظ الكود (lib و assets) بعد التصحيح
           mkdir /tmp/code
           cp -r lib /tmp/code/
           cp -r assets /tmp/code/ 2>/dev/null || true
@@ -34,7 +120,7 @@ jobs:
           # إنشاء مشروع Flutter جديد مع منصة android فقط
           flutter create --org com.kimialfa --project-name kimi_alfa --platforms android .
 
-          # استعادة الكود
+          # استعادة الكود المُصحح
           rm -rf lib assets
           cp -r /tmp/code/lib .
           cp -r /tmp/code/assets . 2>/dev/null || true
@@ -46,7 +132,7 @@ jobs:
           MAP_API_KEY=${{ secrets.MAP_API_KEY }}
           ENV
 
-          # إزالة قسم fonts من pubspec.yaml لتجنب أخطاء الأصول
+          # إزالة قسم fonts من pubspec.yaml (لتجنب أخطاء الأصول)
           sed -i '/fonts:/,/family: Changa/d' pubspec.yaml
 
           # إضافة flutterEmbedding v2
