@@ -1,88 +1,35 @@
 name: Build APK
-
 on:
   push:
     branches: [ main ]
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
-
-      - name: Build
+          flutter-version: '3.24.0'
+      - name: Create .env
         run: |
-          mkdir /tmp/code
-          cp -r lib /tmp/code/
-          cp -r assets /tmp/code/ 2>/dev/null || true
-
-          rm -rf android ios
-          flutter create --org com.flexyemen --project-name flex_yemen --platforms android .
-
-          rm -rf lib assets
-          cp -r /tmp/code/lib .
-          cp -r /tmp/code/assets . 2>/dev/null || true
-
-          # إنشاء .env
           cat > .env << 'ENV'
           SUPABASE_URL=${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
           MAP_API_KEY=${{ secrets.MAP_API_KEY }}
           ENV
-
-          # تعديل الملفات لفرض إصدار Kotlin 1.9.22 في كل مستويات المشروع
-          
-          # 1. تعديل root build.gradle
-          cat > android/build.gradle << 'GRADLE'
-          buildscript {
-              ext.kotlin_version = '1.9.22'
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:8.3.0'
-                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-              }
-          }
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-          rootProject.buildDir = '../build'
-          subprojects {
-              project.buildDir = "${rootProject.buildDir}/${project.name}"
-          }
-          subprojects {
-              project.evaluationDependsOn(':app')
-          }
-          tasks.register("clean", Delete) {
-              delete rootProject.buildDir
-          }
-          GRADLE
-
-          # 2. تعديل app/build.gradle لضمان توافق الـ compiler
-          sed -i 's/kotlinOptions {/kotlinOptions {\n        jvmTarget = "1.8"/' android/app/build.gradle
-          
-          # 3. تحديث gradle-wrapper
-          echo "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.3-all.zip" > android/gradle/wrapper/gradle-wrapper.properties
-
-          # 4. تفعيل flutterEmbedding v2
-          sed -i '/<application>/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' android/app/src/main/AndroidManifest.xml
-
-          # تنظيف وبناء
-          flutter pub get
-          flutter build apk --release --split-per-abi
-
+      - name: Get Dependencies
+        run: flutter pub get
+      - name: Build APK
+        run: flutter build apk --release --split-per-abi
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: release-apk
           path: build/app/outputs/flutter-apk/*.apk
+          retention-days: 7

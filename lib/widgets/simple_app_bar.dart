@@ -1,34 +1,22 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class SimpleAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
-  final bool showBackButton;
   final List<Widget>? actions;
   final Widget? leading;
-
-  const SimpleAppBar({
-    super.key,
-    required this.title,
-    this.showBackButton = true,
-    this.actions,
-    this.leading,
-  });
-
+  const SimpleAppBar({super.key, required this.title, this.actions, this.leading});
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
+      title: Text(title, style: const TextStyle(fontFamily: 'Changa')),
       centerTitle: true,
-      automaticallyImplyLeading: showBackButton,
-      actions: actions,
+      backgroundColor: AppTheme.goldColor,
+      foregroundColor: Colors.black,
       leading: leading,
-      elevation: 0,
+      actions: actions,
     );
   }
-
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

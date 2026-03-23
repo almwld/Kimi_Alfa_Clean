@@ -1,4 +1,3 @@
-import 'package:flex_yemen/models/rating_model.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/custom_app_bar.dart';
@@ -7,19 +6,18 @@ class HandicraftsAntiquesScreen extends StatelessWidget {
   const HandicraftsAntiquesScreen({super.key});
 
   final List<Map<String, dynamic>> _categories = const [
-    {'name': 'Ø¬ÙØ§Ø¨Ù', 'icon': Icons.agriculture, 'color': Colors.brown, 'count': '234'},
-    {'name': 'Ø³Ø¬Ø§Ø¯ ÙØ¯ÙÙ', 'icon': Icons.carpenter, 'color': Colors.red, 'count': '123'},
-    {'name': 'ÙØ¶ÙØ§Øª', 'icon': Icons. diamond, 'color': Colors.grey, 'count': '89'},
-    {'name': 'ÙØ­Ø§Ø³ÙØ§Øª', 'icon': Icons.kitchen, 'color': Colors.amber, 'count': '67'},
-    {'name': 'ØªØ­Ù Ø£Ø«Ø±ÙØ©', 'icon': Icons.history, 'color': Colors.brown, 'count': '45'},
+    {'name': 'جنابي', 'icon': Icons.agriculture, 'color': Colors.brown, 'count': '234'},
+    {'name': 'سجاد يدوي', 'icon': Icons.carpenter, 'color': Colors.red, 'count': '123'},
+    {'name': 'فضيات', 'icon': Icons.diamond, 'color': Colors.grey, 'count': '89'},
+    {'name': 'نحاسيات', 'icon': Icons.kitchen, 'color': Colors.amber, 'count': '67'},
+    {'name': 'تحف أثرية', 'icon': Icons.history, 'color': Colors.brown, 'count': '45'},
   ];
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
-      appBar: const CustomAppBar(title: 'Ø§ÙØ­Ø±Ù ÙØ§ÙØªØ­Ù'),
+      appBar: const CustomAppBar(title: 'الحرف والتحف'),
       body: GridView.builder(
         padding: const EdgeInsets.all(16),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -54,7 +52,7 @@ class HandicraftsAntiquesScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(cat['name'], style: const TextStyle(fontFamily: 'Changa', fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  Text('${cat['count']} ÙØ·Ø¹Ø©', style: const TextStyle(fontFamily: 'Changa', fontSize: 11, color: Colors.grey)),
+                  Text('${cat['count']} قطعة', style: const TextStyle(fontFamily: 'Changa', fontSize: 11, color: Colors.grey)),
                 ],
               ),
             ),
