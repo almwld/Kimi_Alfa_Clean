@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/supabase_service.dart';
-import '../services/location_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/custom_text_field.dart';
 
-/// Ø´Ø§Ø´Ø© Ø¥ÙØ´Ø§Ø¡ Ø­Ø³Ø§Ø¨
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -21,11 +19,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  
-  String? _selectedCity;
-  String _userType = 'customer';
-  bool _acceptTerms = false;
+  String _userType = 'buyer';
+  String _selectedCity = 'صنعاء';
   bool _isLoading = false;
+  bool _agreeToTerms = false;
+
+  final List<String> _cities = ['صنعاء', 'عدن', 'تعز', 'حضرموت', 'إب', 'الحديدة', 'المكلا', 'سيئون'];
 
   @override
   void dispose() {
@@ -39,15 +38,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
-    if (!_acceptTerms) {
+    if (!_agreeToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'ÙØ±Ø¬Ù Ø§ÙÙÙØ§ÙÙØ© Ø¹ÙÙ Ø§ÙØ´Ø±ÙØ· ÙØ§ÙØ£Ø­ÙØ§Ù',
-            style: TextStyle(fontFamily: 'Changa'),
-          ),
-          backgroundColor: AppTheme.error,
-        ),
+        const SnackBar(content: Text('يجب الموافقة على الشروط والأحكام')),
       );
       return;
     }
@@ -55,64 +48,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await SupabaseService.signUpWithEmail(_emailController.text.trim(), _passwordController.text, data: {_emailController.text.trim(), _passwordController.text, data: {
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        fullName: _nameController.text.trim(),
-        phone: _phoneController.text.trim(),
-        userType: _userType,
-        city: _selectedCity,
+      await SupabaseService.signUpWithEmail(
+        _emailController.text.trim(),
+        _passwordController.text,
+        data: {
+          'full_name': _nameController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'user_type': _userType,
+          'city': _selectedCity,
+        },
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'ØªÙ Ø¥ÙØ´Ø§Ø¡ Ø§ÙØ­Ø³Ø§Ø¨ Ø¨ÙØ¬Ø§Ø­! ÙØ±Ø¬Ù ØªÙØ¹ÙÙ Ø¨Ø±ÙØ¯Ù Ø§ÙØ¥ÙÙØªØ±ÙÙÙ',
-              style: TextStyle(fontFamily: 'Changa'),
-            ),
-            backgroundColor: AppTheme.success,
-          ),
-        );
         Navigator.pushReplacementNamed(context, '/login');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم إنشاء الحساب بنجاح، يرجى تسجيل الدخول')),
+        );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'ÙØ´Ù Ø¥ÙØ´Ø§Ø¡ Ø§ÙØ­Ø³Ø§Ø¨: $e',
-              style: const TextStyle(fontFamily: 'Changa'),
-            ),
+            content: Text('فشل إنشاء الحساب: $e', style: const TextStyle(fontFamily: 'Changa')),
             backgroundColor: AppTheme.error,
           ),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cities = LocationService.getCities();
 
     return Scaffold(
       backgroundColor: isDark ? AppTheme.darkBackground : AppTheme.lightBackground,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios,
-            color: AppTheme.getTextColor(context),
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -121,329 +93,107 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Ø§ÙØ¹ÙÙØ§Ù
-                Text(
-                  'Ø¥ÙØ´Ø§Ø¡ Ø­Ø³Ø§Ø¨ Ø¬Ø¯ÙØ¯',
-                  style: TextStyle(
-                    fontFamily: 'Changa',
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.getTextColor(context),
+                const SizedBox(height: 40),
+                Center(
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.goldGradient,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(Icons.person_add, size: 40, color: Colors.black),
                   ),
-                )
-                    .animate()
-                    .fadeIn()
-                    .slideX(begin: -0.2),
-                const SizedBox(height: 8),
-                Text(
-                  'Ø£Ø¯Ø®Ù Ø¨ÙØ§ÙØ§ØªÙ ÙØ¥ÙØ´Ø§Ø¡ Ø­Ø³Ø§Ø¨ Ø¬Ø¯ÙØ¯',
-                  style: TextStyle(
-                    fontFamily: 'Changa',
-                    fontSize: 14,
-                    color: AppTheme.getSecondaryTextColor(context),
-                  ),
-                )
-                    .animate()
-                    .fadeIn(delay: const Duration(milliseconds: 100)),
+                ).animate().fadeIn(duration: const Duration(milliseconds: 600)),
                 const SizedBox(height: 32),
-                // Ø§ÙØ§Ø³Ù Ø§ÙÙØ§ÙÙ
                 CustomTextField(
-                  label: 'Ø§ÙØ§Ø³Ù Ø§ÙÙØ§ÙÙ',
-                  hint: 'ÙØ­ÙØ¯ Ø£Ø­ÙØ¯',
+                  label: 'الاسم الكامل',
                   controller: _nameController,
-                  prefixIcon: const Icon(Icons.person_outline),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'ÙØ±Ø¬Ù Ø¥Ø¯Ø®Ø§Ù Ø§ÙØ§Ø³Ù Ø§ÙÙØ§ÙÙ';
-                    }
-                    return null;
-                  },
-                )
-                    .animate()
-                    .fadeIn(delay: const Duration(milliseconds: 200)),
+                  validator: (v) => v?.isEmpty == true ? 'الاسم مطلوب' : null,
+                ).animate().fadeIn(delay: const Duration(milliseconds: 100)),
                 const SizedBox(height: 16),
-                // Ø§ÙØ¨Ø±ÙØ¯ Ø§ÙØ¥ÙÙØªØ±ÙÙÙ
                 CustomTextField(
-                  label: 'Ø§ÙØ¨Ø±ÙØ¯ Ø§ÙØ¥ÙÙØªØ±ÙÙÙ',
-                  hint: 'example@email.com',
+                  label: 'البريد الإلكتروني',
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
-                  prefixIcon: const Icon(Icons.email_outlined),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'ÙØ±Ø¬Ù Ø¥Ø¯Ø®Ø§Ù Ø§ÙØ¨Ø±ÙØ¯ Ø§ÙØ¥ÙÙØªØ±ÙÙÙ';
-                    }
-                    if (!value.contains('@')) {
-                      return 'ÙØ±Ø¬Ù Ø¥Ø¯Ø®Ø§Ù Ø¨Ø±ÙØ¯ Ø¥ÙÙØªØ±ÙÙÙ ØµØ­ÙØ­';
-                    }
+                  validator: (v) {
+                    if (v?.isEmpty == true) return 'البريد مطلوب';
+                    if (!v!.contains('@')) return 'بريد غير صالح';
                     return null;
                   },
-                )
-                    .animate()
-                    .fadeIn(delay: const Duration(milliseconds: 300)),
+                ).animate().fadeIn(delay: const Duration(milliseconds: 200)),
                 const SizedBox(height: 16),
-                // Ø±ÙÙ Ø§ÙÙØ§ØªÙ
-                PhoneTextField(
+                CustomTextField(
+                  label: 'رقم الهاتف',
                   controller: _phoneController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'ÙØ±Ø¬Ù Ø¥Ø¯Ø®Ø§Ù Ø±ÙÙ Ø§ÙÙØ§ØªÙ';
-                    }
-                    if (value.length < 9) {
-                      return 'Ø±ÙÙ Ø§ÙÙØ§ØªÙ ØºÙØ± ØµØ­ÙØ­';
-                    }
-                    return null;
-                  },
-                )
-                    .animate()
-                    .fadeIn(delay: const Duration(milliseconds: 400)),
+                  keyboardType: TextInputType.phone,
+                  validator: (v) => v?.isEmpty == true ? 'رقم الهاتف مطلوب' : null,
+                ).animate().fadeIn(delay: const Duration(milliseconds: 300)),
                 const SizedBox(height: 16),
-                // ÙÙÙØ© Ø§ÙÙØ±ÙØ±
-                PasswordTextField(
+                CustomTextField(
+                  label: 'كلمة المرور',
                   controller: _passwordController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'ÙØ±Ø¬Ù Ø¥Ø¯Ø®Ø§Ù ÙÙÙØ© Ø§ÙÙØ±ÙØ±';
-                    }
-                    if (value.length < 6) {
-                      return 'ÙÙÙØ© Ø§ÙÙØ±ÙØ± ÙØ¬Ø¨ Ø£Ù ØªÙÙÙ 6 Ø£Ø­Ø±Ù Ø¹ÙÙ Ø§ÙØ£ÙÙ';
-                    }
-                    return null;
-                  },
-                )
-                    .animate()
-                    .fadeIn(delay: const Duration(milliseconds: 500)),
+                  obscureText: true,
+                  validator: (v) => v?.length ?? 0 < 6 ? 'كلمة المرور 6 أحرف على الأقل' : null,
+                ).animate().fadeIn(delay: const Duration(milliseconds: 400)),
                 const SizedBox(height: 16),
-                // ØªØ£ÙÙØ¯ ÙÙÙØ© Ø§ÙÙØ±ÙØ±
-                PasswordTextField(
-                  label: 'ØªØ£ÙÙØ¯ ÙÙÙØ© Ø§ÙÙØ±ÙØ±',
-                  hint: 'Ø£Ø¹Ø¯ Ø¥Ø¯Ø®Ø§Ù ÙÙÙØ© Ø§ÙÙØ±ÙØ±',
+                CustomTextField(
+                  label: 'تأكيد كلمة المرور',
                   controller: _confirmPasswordController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'ÙØ±Ø¬Ù ØªØ£ÙÙØ¯ ÙÙÙØ© Ø§ÙÙØ±ÙØ±';
-                    }
-                    if (value != _passwordController.text) {
-                      return 'ÙÙÙØªØ§ Ø§ÙÙØ±ÙØ± ØºÙØ± ÙØªØ·Ø§Ø¨ÙØªÙÙ';
-                    }
-                    return null;
-                  },
-                )
-                    .animate()
-                    .fadeIn(delay: const Duration(milliseconds: 600)),
+                  obscureText: true,
+                  validator: (v) => v != _passwordController.text ? 'كلمة المرور غير متطابقة' : null,
+                ).animate().fadeIn(delay: const Duration(milliseconds: 500)),
                 const SizedBox(height: 16),
-                // Ø§Ø®ØªÙØ§Ø± Ø§ÙÙØ¯ÙÙØ©
                 DropdownButtonFormField<String>(
                   value: _selectedCity,
-                  decoration: InputDecoration(
-                    labelText: 'Ø§ÙÙØ¯ÙÙØ©',
-                    prefixIcon: const Icon(Icons.location_city),
-                    filled: true,
-                    fillColor: isDark ? AppTheme.darkCard : AppTheme.lightCard,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
+                  decoration: const InputDecoration(
+                    labelText: 'المدينة',
+                    border: OutlineInputBorder(),
                   ),
-                  items: cities.map((city) {
-                    return DropdownMenuItem(
-                      value: city,
-                      child: Text(
-                        city,
-                        style: const TextStyle(fontFamily: 'Changa'),
-                      ),
-                    );
+                  items: _cities.map((city) {
+                    return DropdownMenuItem(value: city, child: Text(city));
                   }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedCity = value;
-                    });
-                  },
-                )
-                    .animate()
-                    .fadeIn(delay: const Duration(milliseconds: 700)),
+                  onChanged: (v) => setState(() => _selectedCity = v!),
+                ).animate().fadeIn(delay: const Duration(milliseconds: 600)),
                 const SizedBox(height: 16),
-                // ÙÙØ¹ Ø§ÙÙØ³ØªØ®Ø¯Ù
-                Text(
-                  'ÙÙØ¹ Ø§ÙØ­Ø³Ø§Ø¨:',
-                  style: TextStyle(
-                    fontFamily: 'Changa',
-                    fontSize: 14,
-                    color: AppTheme.getTextColor(context),
-                  ),
-                ),
-                const SizedBox(height: 8),
                 Row(
                   children: [
-                    Expanded(
-                      child: _UserTypeCard(
-                        title: 'Ø¹ÙÙÙ',
-                        subtitle: 'ÙÙØ´Ø±Ø§Ø¡ ÙØ§ÙØªØµÙØ­',
-                        icon: Icons.shopping_bag_outlined,
-                        isSelected: _userType == 'customer',
-                        onTap: () => setState(() => _userType = 'customer'),
-                      ),
+                    Checkbox(
+                      value: _agreeToTerms,
+                      onChanged: (v) => setState(() => _agreeToTerms = v ?? false),
+                      activeColor: AppTheme.goldColor,
                     ),
-                    const SizedBox(width: 12),
                     Expanded(
-                      child: _UserTypeCard(
-                        title: 'ØªØ§Ø¬Ø±',
-                        subtitle: 'ÙÙØ¨ÙØ¹ ÙØ§ÙØªØ³ÙÙÙ',
-                        icon: Icons.store_outlined,
-                        isSelected: _userType == 'merchant',
-                        onTap: () => setState(() => _userType = 'merchant'),
+                      child: Text(
+                        'أوافق على الشروط والأحكام',
+                        style: TextStyle(fontFamily: 'Changa', color: AppTheme.getTextColor(context)),
                       ),
                     ),
                   ],
-                )
-                    .animate()
-                    .fadeIn(delay: const Duration(milliseconds: 800)),
-                const SizedBox(height: 16),
-                // Ø§ÙÙÙØ§ÙÙØ© Ø¹ÙÙ Ø§ÙØ´Ø±ÙØ·
-                CheckboxListTile(
-                  value: _acceptTerms,
-                  onChanged: (value) {
-                    setState(() {
-                      _acceptTerms = value ?? false;
-                    });
-                  },
-                  title: Row(
-                    children: [
-                      Text(
-                        'Ø£ÙØ§ÙÙ Ø¹ÙÙ ',
-                        style: TextStyle(
-                          fontFamily: 'Changa',
-                          fontSize: 13,
-                          color: AppTheme.getTextColor(context),
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pushNamed(context, '/privacy_policy');
-                        },
-                        child: const Text(
-                          'Ø§ÙØ´Ø±ÙØ· ÙØ§ÙØ£Ø­ÙØ§Ù',
-                          style: TextStyle(
-                            fontFamily: 'Changa',
-                            fontSize: 13,
-                            color: AppTheme.goldColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  activeColor: AppTheme.goldColor,
-                )
-                    .animate()
-                    .fadeIn(delay: const Duration(milliseconds: 900)),
+                ).animate().fadeIn(delay: const Duration(milliseconds: 700)),
                 const SizedBox(height: 24),
-                // Ø²Ø± Ø¥ÙØ´Ø§Ø¡ Ø§ÙØ­Ø³Ø§Ø¨
                 CustomButton(
-                  text: 'Ø¥ÙØ´Ø§Ø¡ Ø­Ø³Ø§Ø¨',
+                  text: 'إنشاء حساب',
                   onPressed: _register,
                   isLoading: _isLoading,
-                )
-                    .animate()
-                    .fadeIn(delay: const Duration(milliseconds: 1000))
-                    .scale(),
-                const SizedBox(height: 24),
-                // Ø±Ø§Ø¨Ø· ØªØ³Ø¬ÙÙ Ø§ÙØ¯Ø®ÙÙ
+                ).animate().fadeIn(delay: const Duration(milliseconds: 800)),
+                const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'ÙØ¯ÙÙ Ø­Ø³Ø§Ø¨ Ø¨Ø§ÙÙØ¹ÙØ',
-                      style: TextStyle(
-                        fontFamily: 'Changa',
-                        color: AppTheme.getSecondaryTextColor(context),
-                      ),
+                      'لديك حساب بالفعل؟',
+                      style: TextStyle(fontFamily: 'Changa', color: AppTheme.getSecondaryTextColor(context)),
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        'ØªØ³Ø¬ÙÙ Ø§ÙØ¯Ø®ÙÙ',
-                        style: TextStyle(
-                          fontFamily: 'Changa',
-                          color: AppTheme.goldColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child: const Text('تسجيل الدخول', style: TextStyle(color: AppTheme.goldColor, fontFamily: 'Changa')),
                     ),
                   ],
-                )
-                    .animate()
-                    .fadeIn(delay: const Duration(milliseconds: 1100)),
+                ).animate().fadeIn(delay: const Duration(milliseconds: 900)),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Ø¨Ø·Ø§ÙØ© ÙÙØ¹ Ø§ÙÙØ³ØªØ®Ø¯Ù
-class _UserTypeCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _UserTypeCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppTheme.goldColor.withOpacity(0.1)
-              : (isDark ? AppTheme.darkCard : AppTheme.lightCard),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? AppTheme.goldColor : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? AppTheme.goldColor : AppTheme.getSecondaryTextColor(context),
-              size: 32,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontFamily: 'Changa',
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: isSelected ? AppTheme.goldColor : AppTheme.getTextColor(context),
-              ),
-            ),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontFamily: 'Changa',
-                fontSize: 11,
-                color: AppTheme.getSecondaryTextColor(context),
-              ),
-            ),
-          ],
         ),
       ),
     );

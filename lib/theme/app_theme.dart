@@ -8,14 +8,25 @@ class AppTheme {
   static const Color darkBackground = Color(0xFF121212);
   static const Color lightCard = Colors.white;
   static const Color darkCard = Color(0xFF1E1E1E);
+  static const Color lightSurface = Colors.white;
+  static const Color darkSurface = Color(0xFF1E1E1E);
   static const Color lightText = Color(0xFF212121);
   static const Color darkText = Color(0xFFE0E0E0);
   static const Color lightTextSecondary = Color(0xFF757575);
   static const Color darkTextSecondary = Color(0xFFB0B0B0);
+  static const Color darkTextLight = Color(0xFFE0E0E0);
   static const Color success = Color(0xFF4CAF50);
   static const Color error = Color(0xFFE53935);
   static const Color warning = Color(0xFFFFA726);
   static const Color info = Color(0xFF29B6F6);
+  static const Color darkDivider = Color(0xFF3C3C3C);
+  static const Color lightDivider = Color(0xFFE0E0E0);
+
+  static const LinearGradient goldGradient = LinearGradient(
+    colors: [goldColor, goldLight],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   static ThemeData get lightTheme {
     return ThemeData(
@@ -121,4 +132,6 @@ class AppTheme {
       Theme.of(context).brightness == Brightness.dark ? darkBackground : lightBackground;
   static Color getCardColor(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? darkCard : lightCard;
+  static Color getDividerColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? darkDivider : lightDivider;
 }
