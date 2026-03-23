@@ -92,10 +92,82 @@ jobs:
           # تنظيف cache Gradle
           rm -rf ~/.gradle/caches/
 
-      - name: Prepare pubspec.yaml
+      - name: Create compatible pubspec.yaml
         run: |
-          sed -i 's/path_provider:.*/path_provider: ^2.0.0/' pubspec.yaml
-          echo "path_provider version fixed"
+          # حذف أي pubspec.yaml قديم
+          rm -f pubspec.yaml
+          
+          # إنشاء pubspec.yaml جديد متوافق مع Dart 3.3.0
+          cat > pubspec.yaml << 'YAML'
+          name: kimi_alfa
+          description: Kimi Alfa Marketplace
+          publish_to: 'none'
+          version: 1.0.0+1
+
+          environment:
+            sdk: '>=3.0.0 <4.0.0'
+
+          dependencies:
+            flutter:
+              sdk: flutter
+            cupertino_icons: ^1.0.6
+            provider: ^6.1.1
+            supabase_flutter: ^2.0.0
+            carousel_slider: ^5.1.2
+            flutter_animate: ^4.5.0
+            flutter_svg: ^2.0.9
+            image_picker: ^1.0.7
+            cached_network_image: ^3.3.1
+            shared_preferences: ^2.2.2
+            intl: ^0.18.1
+            url_launcher: ^6.2.2
+            hive: ^2.2.3
+            hive_flutter: ^1.1.0
+            path_provider: ^2.0.0
+            geolocator: ^11.1.0
+            geocoding: ^3.0.0
+            flutter_map: ^6.1.0
+            latlong2: ^0.9.0
+            flutter_local_notifications: ^17.2.4
+            firebase_core: ^3.12.1
+            firebase_messaging: ^15.2.4
+            flutter_dotenv: ^5.1.0
+            shimmer: ^3.0.0
+            smooth_page_indicator: ^1.1.0
+            flutter_screenutil: ^5.9.0
+            google_fonts: ^6.1.0
+
+          dev_dependencies:
+            flutter_test:
+              sdk: flutter
+            flutter_lints: ^3.0.1
+
+          flutter:
+            uses-material-design: true
+            assets:
+              - .env
+              - assets/images/
+              - assets/icons/svg/
+              - assets/animations/
+              - assets/fonts/
+          YAML
+          
+          echo "pubspec.yaml created with path_provider ^2.0.0"
+          cat pubspec.yaml | grep path_provider
+
+      - name: Restore .env and assets
+        run: |
+          # استعادة .env من secrets إذا كان موجوداً
+          if [ -n "${{ secrets.SUPABASE_URL }}" ]; then
+            cat > .env << 'ENV'
+            SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+            SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+            MAP_API_KEY=${{ secrets.MAP_API_KEY }}
+            ENV
+          fi
+          
+          # التأكد من وجود مجلدات assets الأساسية
+          mkdir -p assets/images assets/icons/svg assets/animations assets/fonts
 
       - name: Build APK
         run: |
