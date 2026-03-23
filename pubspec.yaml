@@ -1,5 +1,5 @@
 name: kimi_alfa
-description: Kimi Alfa - Yemeni E-Commerce Platform
+description: Kimi Alfa Marketplace
 version: 1.0.0+1
 publish_to: none
 
@@ -52,3 +52,10 @@ flutter:
     - assets/images/
     - assets/icons/svg/
     - assets/animations/
+
+  assets:
+    - .env
+    - assets/images/
+    - assets/icons/svg/
+    - assets/animations/
+    - assets/fonts/
