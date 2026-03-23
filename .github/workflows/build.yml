@@ -1,45 +1,100 @@
 name: Build APK
+
 on:
   push:
     branches: [ main, master ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Flutter
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
+          flutter-version: '3.19.0'
           channel: 'stable'
-      - name: Recreate Android folder
+
+      - name: Force Clean and Rebuild Android Config
         run: |
-          rm -rf android
-          flutter create --platforms=android --project-name=flex_yemen --org=com.example .
-      - name: Update Gradle versions
-        run: |
-          cat > android/build.gradle << 'EOF'
-          buildscript {
-              ext.kotlin_version = '1.9.0'
-              repositories { google(); mavenCentral() }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:8.1.0'
-                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+          rm -rf android/
+          flutter create --project-name flex_yemen --platforms android .
+          
+          # تحديث ملف settings.gradle لتعريف الإصدارات الجديدة
+          cat << 'SETTINGS' > android/settings.gradle
+          pluginManagement {
+              def flutterSdkPath = {
+                  def properties = new Properties()
+                  file("local.properties").withInputStream { properties.load(it) }
+                  def flutterSdkPath = properties.getProperty("flutter.sdk")
+                  assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
+                  return flutterSdkPath
+              }()
+
+              includeBuild("\${flutterSdkPath}/packages/flutter_tools/gradle")
+
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
               }
           }
-          allprojects { repositories { google(); mavenCentral() } }
-          rootProject.buildDir = '../build'
-          subprojects { project.buildDir = "\${rootProject.buildDir}/\${project.name}" }
-          subprojects { project.evaluationDependsOn(':app') }
-          tasks.register("clean", Delete) { delete rootProject.buildDir }
-          EOF
-      - name: Get dependencies
-        run: flutter pub get
+
+          plugins {
+              id "dev.flutter.flutter-gradle-plugin" apply false
+              id "com.android.application" version "8.1.0" apply false
+              id "org.jetbrains.kotlin.android" version "1.9.10" apply false
+          }
+
+          include ":app"
+          SETTINGS
+
+          # تحديث ملف app/build.gradle للتوافق مع Java 17
+          cat << 'APP' > android/app/build.gradle
+          plugins {
+              id "com.android.application"
+              id "kotlin-android"
+              id "dev.flutter.flutter-gradle-plugin"
+          }
+
+          android {
+              namespace "com.example.flex_yemen"
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId "com.example.flex_yemen"
+                  minSdk 23
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0.0"
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = '17'
+              }
+          }
+          APP
+
       - name: Build APK
-        run: flutter build apk --release --split-per-abi
+        run: |
+          flutter pub get
+          flutter build apk --release --no-tree-shake-icons
+          
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: android-apks
-          path: build/app/outputs/flutter-apk/*.apk
-          retention-days: 7
+          name: flex-yemen-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
