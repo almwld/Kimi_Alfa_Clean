@@ -1,145 +1,45 @@
 name: Build APK
-
 on:
   push:
-    branches: [ main ]
-
+    branches: [ main, master ]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
-
-      - name: Build
+          channel: 'stable'
+      - name: Recreate Android folder
         run: |
-          # حفظ lib و assets فقط
-          mkdir /tmp/code
-          cp -r lib /tmp/code/
-          cp -r assets /tmp/code/ 2>/dev/null || true
-
-          # حذف أي مجلدات قديمة
-          rm -rf android ios linux macos web windows
-
-          # إنشاء مشروع Flutter جديد مع منصة android فقط
-          flutter create --org com.kimialfa --project-name kimi_alfa --platforms android .
-
-          # استعادة lib و assets
-          rm -rf lib assets
-          cp -r /tmp/code/lib .
-          cp -r /tmp/code/assets . 2>/dev/null || true
-
-          # إنشاء .env من secrets
-          cat > .env << 'ENV'
-          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
-          MAP_API_KEY=${{ secrets.MAP_API_KEY }}
-          ENV
-
-          # إنشاء pubspec.yaml متوافق مع Dart 3.4.0 (باستخدام إصدارات الحزم الصحيحة)
-          cat > pubspec.yaml << 'YAML'
-          name: kimi_alfa
-          description: Kimi Alfa
-          publish_to: 'none'
-          version: 1.0.0+1
-
-          environment:
-            sdk: '>=3.4.0 <4.0.0'
-
-          dependencies:
-            flutter:
-              sdk: flutter
-            cupertino_icons: ^1.0.6
-            provider: ^6.1.1
-            supabase_flutter: ^2.0.0
-            carousel_slider: ^5.1.2
-            flutter_animate: ^4.5.0
-            flutter_svg: ^2.0.9
-            image_picker: ^1.0.7
-            cached_network_image: ^3.3.1
-            shared_preferences: ^2.2.2
-            intl: ^0.18.1
-            url_launcher: ^6.2.2
-            hive: ^2.2.3
-            hive_flutter: ^1.1.0
-            path_provider: ^2.1.5
-            geolocator: ^11.1.0
-            geocoding: ^3.0.0
-            flutter_map: ^6.1.0
-            latlong2: ^0.9.0
-            flutter_local_notifications: ^17.2.4
-            firebase_core: ^3.12.1
-            firebase_messaging: ^15.2.4
-            flutter_dotenv: ^5.1.0
-            shimmer: ^3.0.0
-            smooth_page_indicator: ^1.1.0
-            flutter_screenutil: ^5.9.0
-            google_fonts: ^6.1.0
-
-          dev_dependencies:
-            flutter_test:
-              sdk: flutter
-            flutter_lints: ^3.0.1
-
-          flutter:
-            uses-material-design: true
-            assets:
-              - .env
-              - assets/images/
-              - assets/icons/svg/
-              - assets/animations/
-              - assets/fonts/
-          YAML
-
-          # فرض Kotlin 1.7.1 و Gradle 7.6.3
-          cat > android/build.gradle << 'GRADLE'
+          rm -rf android
+          flutter create --platforms=android --project-name=flex_yemen --org=com.example .
+      - name: Update Gradle versions
+        run: |
+          cat > android/build.gradle << 'EOF'
           buildscript {
-              ext.kotlin_version = '1.7.1'
-              repositories {
-                  google()
-                  mavenCentral()
-              }
+              ext.kotlin_version = '1.9.0'
+              repositories { google(); mavenCentral() }
               dependencies {
-                  classpath 'com.android.tools.build:gradle:7.6.3'
+                  classpath 'com.android.tools.build:gradle:8.1.0'
                   classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
               }
           }
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
+          allprojects { repositories { google(); mavenCentral() } }
           rootProject.buildDir = '../build'
-          subprojects {
-              project.buildDir = "${rootProject.buildDir}/${project.name}"
-          }
-          subprojects {
-              project.evaluationDependsOn(':app')
-          }
-          tasks.register("clean", Delete) {
-              delete rootProject.buildDir
-          }
-          GRADLE
-
-          echo "distributionUrl=https\\://services.gradle.org/distributions/gradle-7.6.3-all.zip" > android/gradle/wrapper/gradle-wrapper.properties
-
-          # إضافة flutterEmbedding
-          sed -i '/<application>/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' android/app/src/main/AndroidManifest.xml
-
-          # تنظيف cache Gradle بالكامل
-          rm -rf ~/.gradle/caches/
-
-          # بناء
-          flutter pub get
-          flutter build apk --release --split-per-abi
-
+          subprojects { project.buildDir = "\${rootProject.buildDir}/\${project.name}" }
+          subprojects { project.evaluationDependsOn(':app') }
+          tasks.register("clean", Delete) { delete rootProject.buildDir }
+          EOF
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Build APK
+        run: flutter build apk --release --split-per-abi
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: android-apks
           path: build/app/outputs/flutter-apk/*.apk
+          retention-days: 7
