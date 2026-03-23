@@ -1,5 +1,5 @@
 name: kimi_alfa
-description: Kimi Alfa Marketplace
+description: Kimi Market - Modern Multi-Vendor Platform for Yemen
 version: 1.0.0+1
 publish_to: none
 
@@ -49,13 +49,10 @@ flutter:
         - asset: assets/fonts/Changa-SemiBold.ttf
           weight: 600
   assets:
-    - assets/images/
-    - assets/icons/svg/
-    - assets/animations/
-
-  assets:
     - .env
-    - assets/images/
-    - assets/icons/svg/
-    - assets/animations/
     - assets/fonts/
+    - assets/animations/
+    - assets/icons/
+    - assets/icons/svg/
+    - assets/images/
+    - assets/images/products/
