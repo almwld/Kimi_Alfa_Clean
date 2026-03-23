@@ -1,9 +1,11 @@
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseService {
   static final SupabaseClient _client = Supabase.instance.client;
   static User? get currentUser => _client.auth.currentUser;
   static String? get currentUserId => currentUser?.id;
+  static bool get isAuthenticated => currentUser != null;
 
   static Future<AuthResponse> signInWithEmail(String email, String password) async {
     return await _client.auth.signInWithPassword(email: email, password: password);
@@ -39,8 +41,11 @@ class SupabaseService {
 
   static Future<List<Map<String, dynamic>>> getProducts({String? category, int limit = 20}) async {
     try {
-      var query = _client.from('products').select('*').limit(limit);
-      if (category != null) query = query.eq('category', category);
+      var query = _client.from('products').select('*');
+      if (category != null) {
+        query = query.eq('category', category);
+      }
+      query = query.limit(limit);
       final response = await query.order('created_at', ascending: false);
       return List<Map<String, dynamic>>.from(response);
     } catch (e) { print('Error getting products: $e'); return []; }
@@ -51,7 +56,7 @@ class SupabaseService {
     catch (e) { print('Error adding product: $e'); return false; }
   }
 
-  static Future<String?> uploadImage(String path, List<int> fileBytes) async {
+  static Future<String?> uploadImage(String path, Uint8List fileBytes) async {
     try {
       final fileName = '${DateTime.now().millisecondsSinceEpoch}_$path';
       await _client.storage.from('images').uploadBinary(fileName, fileBytes, fileOptions: const FileOptions(contentType: 'image/jpeg'));

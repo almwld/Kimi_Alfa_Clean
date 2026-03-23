@@ -55,7 +55,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await SupabaseService.signUpWithEmail(
+      await SupabaseService.signUpWithEmail(_emailController.text.trim(), _passwordController.text, data: {_emailController.text.trim(), _passwordController.text, data: {
         email: _emailController.text.trim(),
         password: _passwordController.text,
         fullName: _nameController.text.trim(),
