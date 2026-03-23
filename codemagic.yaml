@@ -1,23 +1,129 @@
+# Codemagic Workflow - Kimi_Alfa
 workflows:
-  build-apk:
+  android-build:
     name: Build Android APK
+    instance_type: mac_mini_m1
     environment:
       flutter: 3.22.0
       xcode: latest
     scripts:
-      - name: Force Gradle 8.9 via wrapper
+      - name: Prepare environment
         script: |
-          echo "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.9-all.zip" > android/gradle/wrapper/gradle-wrapper.properties
-          chmod +x android/gradle/wrapper/gradle-wrapper.jar
-          echo "✅ Gradle wrapper set to 8.9"
+          echo "Preparing build environment"
+          flutter --version
+      - name: Recreate Android directory
+        script: |
+          echo "Recreating Android from scratch"
+          rm -rf android/
+          flutter create --platforms=android .
+      - name: Fix Gradle to 8.9
+        script: |
+          echo "Setting Gradle 8.9"
+          cat > android/gradle/wrapper/gradle-wrapper.properties << 'GRADLE_WRAPPER'
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.9-all.zip
+          GRADLE_WRAPPER
+      - name: Fix build files
+        script: |
+          echo "Updating build files"
+          cat > android/settings.gradle << 'SETTINGS'
+          pluginManagement {
+              def flutterSdkPath = {
+                  def properties = new Properties()
+                  file("local.properties").withInputStream { properties.load(it) }
+                  def flutterSdkPath = properties.getProperty("flutter.sdk")
+                  return flutterSdkPath
+              }()
+              includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          plugins {
+              id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+              id "com.android.application" version "8.7.0" apply false
+              id "org.jetbrains.kotlin.android" version "1.9.22" apply false
+          }
+          include ":app"
+          SETTINGS
+          cat > android/build.gradle << 'BUILD'
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.buildDir = '../build'
+          subprojects {
+              project.buildDir = "${rootProject.buildDir}/${project.name}"
+          }
+          subprojects {
+              project.evaluationDependsOn(':app')
+          }
+          tasks.register("clean", Delete) {
+              delete rootProject.buildDir
+          }
+          BUILD
+          cat > android/app/build.gradle << 'APP_BUILD'
+          plugins {
+              id "com.android.application"
+              id "kotlin-android"
+              id "dev.flutter.flutter-gradle-plugin"
+          }
+          android {
+              namespace "com.kimialfa.app"
+              compileSdk 34
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = '17'
+              }
+              defaultConfig {
+                  applicationId "com.kimialfa.app"
+                  minSdk 21
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0.0"
+                  multiDexEnabled true
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.debug
+                  }
+              }
+          }
+          dependencies {
+              implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.22"
+          }
+          APP_BUILD
+      - name: Add flutterEmbedding to Manifest
+        script: |
+          sed -i '' '/<application>/a \
+          \        <meta-data android:name="flutterEmbedding" android:value="2" />
+          ' android/app/src/main/AndroidManifest.xml
+      - name: Remove fonts from pubspec.yaml
+        script: |
+          sed -i '' '/fonts:/,/family: Changa/d' pubspec.yaml
+      - name: Create .env from secrets
+        script: |
+          cat > .env << 'ENV'
+          SUPABASE_URL=$SUPABASE_URL
+          SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+          MAP_API_KEY=$MAP_API_KEY
+          ENV
+      - name: Clean Gradle cache
+        script: |
+          rm -rf ~/.gradle/caches/
       - name: Get dependencies
         script: flutter pub get
-      - name: Build APK using wrapper
-        script: |
-          cd android
-          ./gradlew clean assembleRelease --no-daemon
-          cd ..
-          cp android/app/build/outputs/apk/release/*.apk build/app/outputs/flutter-apk/ 2>/dev/null || true
+      - name: Build APK
+        script: flutter build apk --release --split-per-abi
     artifacts:
       - build/app/outputs/flutter-apk/*.apk
-      - android/app/build/outputs/apk/release/*.apk
