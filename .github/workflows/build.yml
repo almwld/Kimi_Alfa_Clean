@@ -22,7 +22,7 @@ jobs:
           cp -r lib /tmp/code/
           cp -r assets /tmp/code/ 2>/dev/null || true
 
-          # حذف android/ios
+          # حذف أي مجلد android/ios قديم
           rm -rf android ios
 
           # إنشاء مشروع Flutter جديد
@@ -33,7 +33,14 @@ jobs:
           cp -r /tmp/code/lib .
           cp -r /tmp/code/assets . 2>/dev/null || true
 
-          # إنشاء pubspec.yaml جديد (path_provider ^2.0.0 متوافق مع Dart 3.3.0)
+          # إنشاء .env من secrets
+          cat > .env << 'ENV'
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          MAP_API_KEY=${{ secrets.MAP_API_KEY }}
+          ENV
+
+          # إنشاء pubspec.yaml متوافق مع Dart 3.3.0
           cat > pubspec.yaml << 'YAML'
           name: kimi_alfa
           description: Kimi Alfa
@@ -88,15 +95,11 @@ jobs:
               - assets/fonts/
           YAML
 
-          # إنشاء .env من secrets
-          cat > .env << 'ENV'
-          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
-          MAP_API_KEY=${{ secrets.MAP_API_KEY }}
-          ENV
-
           # إضافة flutterEmbedding
           sed -i '/<application>/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' android/app/src/main/AndroidManifest.xml
+
+          # تنظيف cache Gradle بالكامل (للتخلص من Kotlin 1.9.0)
+          rm -rf ~/.gradle/caches/
 
           # بناء
           flutter pub get
