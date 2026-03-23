@@ -1,4 +1,4 @@
-name: Build APK
+name: Build Flx
 
 on:
   push:
@@ -10,66 +10,51 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
+          flutter-version: '3.22.0'   # إصدار ثابت لضمان توافق الحزم
 
-      - name: Build
+      - name: Create fresh Flutter project
         run: |
-          mkdir /tmp/code
-          cp -r lib /tmp/code/
-          cp -r assets /tmp/code/ 2>/dev/null || true
-          cp .env /tmp/code/ 2>/dev/null || true
+          mkdir -p /tmp/fresh
+          cd /tmp/fresh
+          flutter create --org com.flexyemen --project-name fresh_project .
+          cd $GITHUB_WORKSPACE
+          cp -r lib /tmp/fresh/
+          cp -r assets /tmp/fresh/ 2>/dev/null || true
+          cp pubspec.yaml /tmp/fresh/
+          cp .env /tmp/fresh/ 2>/dev/null || true
+          rm -rf lib assets pubspec.yaml .env android ios
+          cp -r /tmp/fresh/. .
+          rm -rf /tmp/fresh
 
-          rm -rf android ios
-          flutter create --org com.kimialfa --project-name kimi_alfa --platforms android .
+      - name: Update AGP version and fix Gradle
+        run: |
+          # تحديث Android Gradle Plugin إلى 8.1.1
+          if [ -f android/settings.gradle ]; then
+            sed -i 's/id "com.android.application" version "8.1.0"/id "com.android.application" version "8.1.1"/g' android/settings.gradle
+            echo "✅ Updated AGP to 8.1.1"
+          else
+            echo "⚠️ android/settings.gradle not found"
+          fi
 
-          rm -rf lib assets
-          cp -r /tmp/code/lib .
-          cp -r /tmp/code/assets . 2>/dev/null || true
-          cp /tmp/code/.env . 2>/dev/null || true
-
-          sed -i 's/path_provider: .*/path_provider: ^2.0.0/' pubspec.yaml
-          sed -i '/fonts:/,/family: Changa/d' pubspec.yaml
-
-          cat > .env << 'ENV'
-          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
-          MAP_API_KEY=${{ secrets.MAP_API_KEY }}
-          ENV
-
+      - name: Set app name and add flutterEmbedding
+        run: |
+          sed -i 's/android:label="fresh_project"/android:label="Flex Yemen Market"/g' android/app/src/main/AndroidManifest.xml
+          # إضافة flutterEmbedding v2 لتجنب مشكلة Android v1
           sed -i '/<application>/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' android/app/src/main/AndroidManifest.xml
 
-          cat > android/build.gradle << 'GRADLE'
-          buildscript {
-              ext.kotlin_version = '1.7.1'
-              repositories { google(); mavenCentral() }
-              dependencies {
-                  classpath 'com.android.tools.build:gradle:7.6.3'
-                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-              }
-          }
-          allprojects { repositories { google(); mavenCentral() } }
-          rootProject.buildDir = '../build'
-          subprojects { project.buildDir = "${rootProject.buildDir}/${project.name}" }
-          subprojects { project.evaluationDependsOn(':app') }
-          tasks.register("clean", Delete) { delete rootProject.buildDir }
-          GRADLE
+      - name: Clean Gradle cache
+        run: rm -rf ~/.gradle/caches/
 
-          echo "distributionUrl=https\\://services.gradle.org/distributions/gradle-7.6.3-all.zip" > android/gradle/wrapper/gradle-wrapper.properties
-          rm -rf ~/.gradle/caches/
+      - name: Get dependencies
+        run: flutter pub get
 
-          flutter pub get
-          flutter build apk --release --split-per-abi
+      - name: Build APK (split-per-abi)
+        run: flutter build apk --release --split-per-abi
 
-      - name: Upload APK
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
           name: app-release
