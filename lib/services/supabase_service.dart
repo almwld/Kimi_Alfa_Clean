@@ -41,11 +41,13 @@ class SupabaseService {
 
   static Future<List<Map<String, dynamic>>> getProducts({String? category, int limit = 20}) async {
     try {
+      // بناء الاستعلام بشكل صحيح
       var query = _client.from('products').select('*');
       if (category != null) {
         query = query.eq('category', category);
       }
-      final response = await query.limit(limit).order('created_at', ascending: false);
+      query = query.limit(limit);
+      final response = await query.order('created_at', ascending: false);
       return List<Map<String, dynamic>>.from(response);
     } catch (e) { print('Error getting products: $e'); return []; }
   }
