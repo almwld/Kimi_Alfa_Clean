@@ -2,14 +2,14 @@ workflows:
   build-apk:
     name: Build Android APK
     environment:
-      flutter: 3.24.0
+      flutter: 3.22.0
       xcode: latest
     scripts:
-      - name: فرض Gradle 8.9
+      - name: Force Gradle 8.9 and clear cache
         script: |
           echo "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.9-all.zip" > android/gradle/wrapper/gradle-wrapper.properties
-          echo "✅ Gradle wrapper updated to 8.9"
-          cat android/gradle/wrapper/gradle-wrapper.properties
+          rm -rf ~/.gradle/caches/
+          echo "✅ Gradle wrapper set to 8.9 and cache cleared"
       - name: Get dependencies
         script: flutter pub get
       - name: Build APK
