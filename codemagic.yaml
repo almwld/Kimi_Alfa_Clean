@@ -5,14 +5,19 @@ workflows:
       flutter: 3.22.0
       xcode: latest
     scripts:
-      - name: Force Gradle 8.9 and clear cache
+      - name: Force Gradle 8.9 via wrapper
         script: |
           echo "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.9-all.zip" > android/gradle/wrapper/gradle-wrapper.properties
-          rm -rf ~/.gradle/caches/
-          echo "✅ Gradle wrapper set to 8.9 and cache cleared"
+          chmod +x android/gradle/wrapper/gradle-wrapper.jar
+          echo "✅ Gradle wrapper set to 8.9"
       - name: Get dependencies
         script: flutter pub get
-      - name: Build APK
-        script: flutter build apk --release --split-per-abi
+      - name: Build APK using wrapper
+        script: |
+          cd android
+          ./gradlew clean assembleRelease --no-daemon
+          cd ..
+          cp android/app/build/outputs/apk/release/*.apk build/app/outputs/flutter-apk/ 2>/dev/null || true
     artifacts:
       - build/app/outputs/flutter-apk/*.apk
+      - android/app/build/outputs/apk/release/*.apk
