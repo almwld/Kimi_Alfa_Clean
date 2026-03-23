@@ -45,8 +45,7 @@ class SupabaseService {
       if (category != null) {
         query = query.eq('category', category);
       }
-      query = query.limit(limit);
-      final response = await query.order('created_at', ascending: false);
+      final response = await query.limit(limit).order('created_at', ascending: false);
       return List<Map<String, dynamic>>.from(response);
     } catch (e) { print('Error getting products: $e'); return []; }
   }
