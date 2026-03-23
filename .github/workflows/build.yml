@@ -2,105 +2,38 @@ name: Build APK
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Set up Flutter
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.19.0'
-          channel: 'stable'
 
-      - name: Force Clean and Rebuild Android Config
+      - name: Build
         run: |
-          rm -rf android/
-          flutter create --project-name flex_yemen --platforms android .
-          
-          cat << 'SETTINGS' > android/settings.gradle
-          pluginManagement {
-              def flutterSdkPath = {
-                  def properties = new Properties()
-                  file("local.properties").withInputStream { properties.load(it) }
-                  def flutterSdkPath = properties.getProperty("flutter.sdk")
-                  assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
-                  return flutterSdkPath
-              }()
+          mkdir /tmp/code
+          cp -r lib /tmp/code/
+          cp -r assets /tmp/code/ 2>/dev/null || true
+          cp .env /tmp/code/ 2>/dev/null || true
 
-              includeBuild("\${flutterSdkPath}/packages/flutter_tools/gradle")
+          rm -rf android ios
 
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
+          flutter create --org com.kimialfa --project-name kimi_alfa --platforms android .
 
-          plugins {
-              id "dev.flutter.flutter-gradle-plugin" apply false
-              id "com.android.application" version "8.1.0" apply false
-              id "org.jetbrains.kotlin.android" version "1.9.10" apply false
-          }
+          rm -rf lib assets
+          cp -r /tmp/code/lib .
+          cp -r /tmp/code/assets . 2>/dev/null || true
+          cp /tmp/code/.env . 2>/dev/null || true
 
-          include ":app"
-          SETTINGS
-
-          cat << 'APP' > android/app/build.gradle
-          plugins {
-              id "com.android.application"
-              id "kotlin-android"
-              id "dev.flutter.flutter-gradle-plugin"
-          }
-
-          android {
-              namespace "com.example.flex_yemen"
-              compileSdk 34
-
-              defaultConfig {
-                  applicationId "com.example.flex_yemen"
-                  minSdk 23
-                  targetSdk 34
-                  versionCode 1
-                  versionName "1.0.0"
-              }
-
-              compileOptions {
-                  sourceCompatibility JavaVersion.VERSION_17
-                  targetCompatibility JavaVersion.VERSION_17
-              }
-
-              kotlinOptions {
-                  jvmTarget = '17'
-              }
-          }
-          APP
-
-          # إضافة flutterEmbedding
-          sed -i '/<application>/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' android/app/src/main/AndroidManifest.xml
-
-          # تنظيف cache Gradle
-          rm -rf ~/.gradle/caches/
-
-      - name: Create compatible pubspec.yaml
-        run: |
-          # حذف أي pubspec.yaml قديم
-          rm -f pubspec.yaml
-          
-          # إنشاء pubspec.yaml جديد متوافق مع Dart 3.3.0
           cat > pubspec.yaml << 'YAML'
           name: kimi_alfa
-          description: Kimi Alfa Marketplace
+          description: Kimi Alfa
           publish_to: 'none'
           version: 1.0.0+1
 
@@ -151,31 +84,16 @@ jobs:
               - assets/animations/
               - assets/fonts/
           YAML
-          
-          echo "pubspec.yaml created with path_provider ^2.0.0"
-          cat pubspec.yaml | grep path_provider
 
-      - name: Restore .env and assets
-        run: |
-          # استعادة .env من secrets إذا كان موجوداً
-          if [ -n "${{ secrets.SUPABASE_URL }}" ]; then
-            cat > .env << 'ENV'
-            SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-            SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
-            MAP_API_KEY=${{ secrets.MAP_API_KEY }}
-            ENV
-          fi
-          
-          # التأكد من وجود مجلدات assets الأساسية
-          mkdir -p assets/images assets/icons/svg assets/animations assets/fonts
+          sed -i '/<application>/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' android/app/src/main/AndroidManifest.xml
 
-      - name: Build APK
-        run: |
+          rm -rf ~/.gradle/caches/
+
           flutter pub get
           flutter build apk --release --split-per-abi
-          
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: flex-yemen-apk
+          name: app-release
           path: build/app/outputs/flutter-apk/*.apk
