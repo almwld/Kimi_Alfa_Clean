@@ -1,5 +1,5 @@
 name: kimi_alfa
-description: Kimi Market - Modern Multi-Vendor Platform for Yemen
+description: Kimi Alfa - Modern Multi-Vendor Platform for Yemen
 version: 1.0.0+1
 publish_to: none
 
@@ -12,7 +12,7 @@ dependencies:
   cupertino_icons: ^1.0.6
   provider: ^6.1.1
   supabase_flutter: ^2.0.0
-  carousel_slider: ^5.1.2
+  carousel_slider: ^5.0.0
   flutter_animate: ^4.3.0
   flutter_svg: ^2.0.17
   image_picker: ^1.0.7

@@ -1,14 +1,18 @@
 workflows:
-  flex-yemen:
-    name: Flex Yemen Build
-    instance_type: mac_mini_m1
+  build-apk:
+    name: Build Android APK
     environment:
-      flutter: stable
+      flutter: 3.24.0
       xcode: latest
     scripts:
-      - flutter pub get
-      - flutter build apk --release
-      - flutter build ios --release --no-codesign
+      - name: فرض Gradle 8.9
+        script: |
+          echo "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.9-all.zip" > android/gradle/wrapper/gradle-wrapper.properties
+          echo "✅ Gradle wrapper updated to 8.9"
+          cat android/gradle/wrapper/gradle-wrapper.properties
+      - name: Get dependencies
+        script: flutter pub get
+      - name: Build APK
+        script: flutter build apk --release --split-per-abi
     artifacts:
       - build/app/outputs/flutter-apk/*.apk
-      - build/ios_archive/*.xcarchive
