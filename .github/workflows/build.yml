@@ -13,17 +13,16 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0'
+          flutter-version: '3.22.0'
 
       - name: Build
         run: |
-          # حفظ الكود (lib, assets, .env)
+          # حفظ الكود (lib, assets)
           mkdir /tmp/code
           cp -r lib /tmp/code/
           cp -r assets /tmp/code/ 2>/dev/null || true
-          cp .env /tmp/code/ 2>/dev/null || true
 
-          # حذف مجلد android القديم
+          # حذف android/ios القديم
           rm -rf android ios
 
           # إنشاء مشروع Flutter جديد مع منصة android فقط
@@ -33,9 +32,48 @@ jobs:
           rm -rf lib assets
           cp -r /tmp/code/lib .
           cp -r /tmp/code/assets . 2>/dev/null || true
-          cp /tmp/code/.env . 2>/dev/null || true
 
-          # إضافة flutterEmbedding (لتجنب مشكلة Android v1)
+          # إنشاء .env من GitHub Secrets
+          cat > .env << 'ENV'
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          MAP_API_KEY=${{ secrets.MAP_API_KEY }}
+          ENV
+
+          # فرض Kotlin 1.9.22 و Gradle 8.3
+          cat > android/build.gradle << 'GRADLE'
+          buildscript {
+              ext.kotlin_version = '1.9.22'
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.3.0'
+                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.buildDir = '../build'
+          subprojects {
+              project.buildDir = "${rootProject.buildDir}/${project.name}"
+          }
+          subprojects {
+              project.evaluationDependsOn(':app')
+          }
+          tasks.register("clean", Delete) {
+              delete rootProject.buildDir
+          }
+          GRADLE
+
+          echo "distributionUrl=https\\://services.gradle.org/distributions/gradle-8.3-all.zip" > android/gradle/wrapper/gradle-wrapper.properties
+
+          # إضافة flutterEmbedding
           sed -i '/<application>/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' android/app/src/main/AndroidManifest.xml
 
           # تنظيف cache Gradle بالكامل (للتخلص من Kotlin 1.9.0)
