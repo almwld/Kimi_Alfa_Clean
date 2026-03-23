@@ -28,7 +28,6 @@ jobs:
           rm -rf android/
           flutter create --project-name flex_yemen --platforms android .
           
-          # تحديث ملف settings.gradle لتعريف الإصدارات الجديدة
           cat << 'SETTINGS' > android/settings.gradle
           pluginManagement {
               def flutterSdkPath = {
@@ -57,7 +56,6 @@ jobs:
           include ":app"
           SETTINGS
 
-          # تحديث ملف app/build.gradle للتوافق مع Java 17
           cat << 'APP' > android/app/build.gradle
           plugins {
               id "com.android.application"
@@ -88,13 +86,24 @@ jobs:
           }
           APP
 
+          # إضافة flutterEmbedding
+          sed -i '/<application>/a \        <meta-data android:name="flutterEmbedding" android:value="2" />' android/app/src/main/AndroidManifest.xml
+
+          # تنظيف cache Gradle
+          rm -rf ~/.gradle/caches/
+
+      - name: Prepare pubspec.yaml
+        run: |
+          sed -i 's/path_provider:.*/path_provider: ^2.0.0/' pubspec.yaml
+          echo "path_provider version fixed"
+
       - name: Build APK
         run: |
           flutter pub get
-          flutter build apk --release --no-tree-shake-icons
+          flutter build apk --release --split-per-abi
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: flex-yemen-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/*.apk
